@@ -8,7 +8,7 @@ This Java library allows you to query Dgraph using SQL. You can think of it as a
 
 To start using SQL, create a Dgraph client:
 
-```
+```java
 ManagedChannel channel = ManagedChannelBuilder
     .forAddress("localhost", 9080)
     .usePlaintext().build();
@@ -18,7 +18,7 @@ DgraphClient dgraphClient = new DgraphClient(stub);
 
 Translate SQL into native Dgraph queries:
 
-```
+```java
 String sql = "SELECT r.resblock_name FROM (r:resblock) WHERE r.resblock_id = '1000010';";
 SqlParser parser = SqlParser.getParser();
 String graphql = parser.toGraphQL(sql);
@@ -27,13 +27,13 @@ System.out.println(graphql);
 
 The output is:
 
-```
+```graphql
 { query(func:eq(resblock_id,"1000010"))@filter(type(resblock)){ resblock_name } }
 ```
 
 Now you can run the Dgraph native query:
 
-```
+```java
 dgraphClient.newReadOnlyTransaction().query(graphql);
 ```
 
@@ -52,7 +52,7 @@ Although Draph SQL follows the SQL terminology and conventions first, whenever p
 
 GraphQL+- query example: Number of subway station nearby the resblock named "清秀阁".
 
-```
+```graphql
 {
 	query(func: eq(resblock_name,"清秀阁"))@filter(type(resblock)){ 			   					
 	    count(r_subway_station)
@@ -62,7 +62,7 @@ GraphQL+- query example: Number of subway station nearby the resblock named "清
 
 the  Dgraph SQL equivalent:
 
-```
+```sql
 SELECT count(r.r_subway_station)
 FROM (r:resblock)-[:r_subway_station]->
 WHERE r.resblock_name = '清秀阁';
@@ -74,7 +74,7 @@ The supported functions include min, max, sum and avg.
 
 GraphQL+- query example: Find supermarkets named "日月超市" and the average green ratio of resblocks nearby them.
 
-```
+```graphql
 {
 	C as var(func: allofterms(name,"日月超市"))@filter(type(supermarket)){
 		B as avg(val(A))
@@ -91,7 +91,7 @@ GraphQL+- query example: Find supermarkets named "日月超市" and the average 
 
 the Dgraph SQL equivalent:
 
-```
+```sql
 SELECT s.name, sum(resblock.green_ratio)
 FROM (s:supermarket)-[:~r_supermarket]->(resblock)
 WHERE allofterms(s.name,'日月超市');
@@ -103,7 +103,7 @@ It must be specified that which node to limit. `first: N` retrieves the first `N
 
 GraphQL+- query example: Find first three supermarkets that near by resblock named "清秀阁".
 
-```
+```graphql
 {
 	query(func:eq(resblock_name,"清秀阁"))@filter(type(resblock)){
 		r_supermarket@filter(type(supermarket))(first:3){
@@ -115,7 +115,7 @@ GraphQL+- query example: Find first three supermarkets that near by resblock nam
 
 the Dgraph SQL equivalent:
 
-```
+```sql
 SELECT s.name 
 FROM (r:resblock)-[:r_supermarket]->(s:supermarket) 
 WHERE r.resblock_name = '清秀阁'
@@ -126,7 +126,7 @@ LIMIT s(first:3);
 
  GraphQL+- query example: 
 
-```
+```graphql
 {
 	query(func:regexp(resblock_name,/秀园/), orderasc:resblock_name)@filter(type(resblock)){
 		resblock_name 	r_subway_station@filter(type(subway_station)){
@@ -138,7 +138,7 @@ LIMIT s(first:3);
 
 the Dgraph SQL equivalent:
 
-```shortestPath
+```sql
 SELECT r.resblock_name, s.name 
 FROM (r:resblock)-[:r_subway_station]->(s:subway_station) 
 WHERE regexp(r.resblock_name,'秀园') 
@@ -153,7 +153,7 @@ inside the `select` clause.
 
 GraphQL+- query example: Group resblocks by city and return the number of resblock in each city.
 
-```
+```graphql
 {
 	var(func:type(resblock))@groupby(r_city){
 		A as count(uid) 
@@ -166,7 +166,7 @@ GraphQL+- query example: Group resblocks by city and return the number of resblo
 
 the Dgraph SQL equivalent:
 
-```
+```sql
 SELECT count(r)
 FROM (r:resblock)-[:r_city]-> 
 GROUP BY r_city;
@@ -178,10 +178,10 @@ The shortest path between a source node and destination node can be found using 
 
 GraphQL+- query example:
 
-```
+```graphql
 { 
 	S as var(func: eq(name,"Alice"))@filter(type(person)) 
-	T as var(func: eq(name,"Bob"))@filter(tupe(person)) 
+	T as var(func: eq(name,"Bob"))@filter(type(person)) 
 	path as shortest(from: uid(S), to: uid(T), numpaths: 1) { 
 		friend 
 	} 
@@ -193,7 +193,7 @@ GraphQL+- query example:
 
 the Dgraph SQL equivalent:
 
-```
+```sql
 SELECT shortest(property: name, numpaths: 1)
 FROM (pm:person)-[:friend]->(rd:person)
 WHERE pm.name = 'Alice' AND rd.name = 'Bob';
@@ -205,7 +205,7 @@ The maximum depth is specified by the `depth` parameter.
 
 GraphQL+- query example:
 
-```
+```graphql
 {
 	query(func:eq(resblock_name,"清秀阁"))@filter(type(resblock))@recurse(depth:3){
 		expand(_all_)
@@ -215,7 +215,7 @@ GraphQL+- query example:
 
 the Dgraph SQL equivalent:
 
-```
+```sql
 SELECT ndegree(depth: 3)
 FROM (r:resblock) 
 WHERE r.resblock_name = '清秀阁';
